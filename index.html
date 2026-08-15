@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LES VAGABONDS — Une communauté. Des rencontres. Des aventures.</title>
+<meta name="description" content="LES VAGABONDS est une communauté Discord où l'on discute, joue, partage et vit des aventures ensemble. Rejoins l'errance." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0707;
+    --bg-elevated:#130d0d;
+    --surface: rgba(255,255,255,0.035);
+    --surface-border: rgba(255,255,255,0.08);
+    --purple:#dc2626;
+    --purple-soft:#f87171;
+    --purple-deep:#7f1d1d;
+    --blue:#b91c1c;
+    --ink:#f4f2fa;
+    --muted:#948da8;
+    --muted-dim:#635d75;
+    --line: rgba(255,255,255,0.08);
+    --glow: 0 0 40px rgba(220,38,38,0.35);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Manrope', sans-serif;
+    overflow-x:hidden;
+    position:relative;
+  }
+  ::selection{ background: var(--purple); color:#fff; }
+
+  h1,h2,h3,.display{
+    font-family:'Syne', sans-serif;
+    font-weight:800;
+    letter-spacing:-0.02em;
+    line-height:1.02;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--purple-soft);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .eyebrow::before{
+    content:'';
+    width:22px; height:1px;
+    background: linear-gradient(90deg, var(--purple), transparent);
+  }
+  .muted{ color:var(--muted); }
+  .container{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 28px;
+  }
+  section{ position:relative; padding:140px 0; }
+  @media (max-width:768px){ section{ padding:96px 0; } .container{ padding:0 20px; } }
+
+  /* ---------- Background atmosphere ---------- */
+  #particle-canvas{
+    position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.5;
+  }
+  .noise{
+    position:fixed; inset:0; z-index:1; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    mix-blend-mode:overlay;
+  }
+  .glow-field{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(600px 500px at 15% 8%, rgba(220,38,38,0.16), transparent 60%),
+      radial-gradient(700px 600px at 90% 30%, rgba(185,28,28,0.10), transparent 60%),
+      radial-gradient(800px 700px at 40% 90%, rgba(220,38,38,0.10), transparent 60%);
+  }
+
+  /* ---------- The Trail (signature element) ---------- */
+  #trail{
+    position:fixed;
+    left:36px; top:50%; transform:translateY(-50%);
+    z-index:40;
+    display:flex; flex-direction:column; align-items:center;
+    gap:0;
+  }
+  @media (max-width:1100px){ #trail{ display:none; } }
+  #trail svg{ display:block; }
+  .trail-node{ cursor:pointer; }
+  .trail-node circle.dot{
+    fill:#12101b; stroke:var(--muted-dim); stroke-width:1.4;
+    transition: all .4s ease;
+  }
+  .trail-node.active circle.dot{
+    fill:var(--purple); stroke:var(--purple-soft);
+    filter:drop-shadow(0 0 8px rgba(220,38,38,0.9));
+  }
+  .trail-node text{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px; fill:var(--muted-dim); letter-spacing:0.1em;
+    transition: fill .4s ease;
+  }
+  .trail-node.active text{ fill:var(--purple-soft); }
+  .trail-path-fill{
+    stroke:var(--purple);
+    stroke-width:1.4;
+    fill:none;
+    filter:drop-shadow(0 0 6px rgba(220,38,38,0.7));
+    transition: stroke-dashoffset .2s linear;
+  }
+
+  /* mobile progress */
+  #trail-mobile{
+    position:fixed; top:0; left:0; height:2px; width:0%;
+    background:linear-gradient(90deg, var(--purple), var(--blue));
+    z-index:60; transition:width .1s linear;
+  }
+
+  /* ---------- Nav ---------- */
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:50;
+    padding:24px 0;
+    transition: all .4s ease;
+    border-bottom:1px solid transparent;
+  }
+  nav.scrolled{
+    padding:14px 0;
+    background:rgba(8,7,12,0.75);
+    backdrop-filter: blur(16px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{
+    max-width:1180px; margin:0 auto; padding:0 28px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo{
+    font-family:'Syne', sans-serif; font-weight:800; font-size:19px;
+    letter-spacing:0.02em; display:flex; align-items:center; gap:10px;
+  }
+  .logo .mark{
+    width:9px; height:9px; border-radius:2px;
+    background:var(--purple); transform:rotate(45deg);
+    box-shadow:0 0 12px rgba(220,38,38,0.8);
+  }
+  .nav-links{ display:flex; gap:36px; list-style:none; }
+  .nav-links a{
+    color:var(--muted); text-decoration:none; font-size:14px; font-weight:600;
+    position:relative; transition:color .3s ease;
+  }
+  .nav-links a:hover{ color:var(--ink); }
+  .nav-links a::after{
+    content:''; position:absolute; left:0; bottom:-6px; width:0; height:1px;
+    background:var(--purple); transition:width .3s ease;
+  }
+  .nav-links a:hover::after{ width:100%; }
+  .nav-cta{
+    padding:10px 20px; border-radius:8px;
+    background:var(--ink); color:#0a0a0a; font-size:13px; font-weight:700;
+    text-decoration:none; transition:all .3s ease;
+  }
+  .nav-cta:hover{ box-shadow:0 0 24px rgba(220,38,38,0.5); transform:translateY(-1px); background:var(--purple-soft); color:#fff; }
+  .hamburger{ display:none; flex-direction:column; gap:5px; cursor:pointer; z-index:60; background:none; border:none; }
+  .hamburger span{ width:22px; height:1.5px; background:var(--ink); transition:all .3s ease; }
+  @media (max-width:860px){
+    .nav-links, .nav-cta.desktop{ display:none; }
+    .hamburger{ display:flex; }
+  }
+  #mobile-menu{
+    position:fixed; inset:0; z-index:55; background:rgba(8,7,12,0.98);
+    backdrop-filter:blur(20px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:32px;
+    opacity:0; pointer-events:none; transition:opacity .4s ease;
+  }
+  #mobile-menu.open{ opacity:1; pointer-events:all; }
+  #mobile-menu a{ color:var(--ink); text-decoration:none; font-family:'Syne',sans-serif; font-weight:700; font-size:26px; }
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    display:inline-flex; align-items:center; gap:10px;
+    padding:16px 30px; border-radius:10px;
+    font-weight:700; font-size:15px; text-decoration:none;
+    transition: all .35s cubic-bezier(.2,.8,.2,1);
+    cursor:pointer; border:1px solid transparent; position:relative;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg, var(--purple), #991b1b);
+    color:#fff; box-shadow:0 0 0px rgba(220,38,38,0);
+  }
+  .btn-primary:hover{
+    box-shadow:0 0 44px rgba(220,38,38,0.55);
+    transform:translateY(-2px);
+  }
+  .btn-ghost{
+    background:transparent; color:var(--ink); border:1px solid var(--surface-border);
+    backdrop-filter:blur(8px);
+  }
+  .btn-ghost:hover{ border-color:var(--purple-soft); background:rgba(220,38,38,0.08); transform:translateY(-2px); }
+  .btn-large{ padding:20px 44px; font-size:17px; border-radius:12px; }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    min-height:100svh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; position:relative; padding-top:80px;
+  }
+  .hero-tag{
+    font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.2em;
+    color:var(--purple-soft); text-transform:uppercase;
+    border:1px solid var(--surface-border); padding:8px 18px; border-radius:100px;
+    background:var(--surface); margin-bottom:32px;
+    animation: fadeUp .9s ease both;
+  }
+  .hero h1{
+    font-size:clamp(56px, 10vw, 128px);
+    background:linear-gradient(180deg, #fff 20%, #fca5a5 65%, var(--purple) 130%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation: fadeUp 1s .1s ease both;
+    text-shadow:0 0 80px rgba(220,38,38,0.25);
+  }
+  .hero-sub{
+    font-family:'Syne', sans-serif; font-weight:600; font-size:clamp(16px,2.4vw,22px);
+    color:var(--purple-soft); margin-top:22px; letter-spacing:0.01em;
+    animation: fadeUp 1s .2s ease both;
+  }
+  .hero-desc{
+    max-width:560px; color:var(--muted); font-size:16.5px; line-height:1.7; margin:26px auto 0;
+    animation: fadeUp 1s .3s ease both;
+  }
+  .hero-actions{
+    display:flex; gap:16px; margin-top:44px; flex-wrap:wrap; justify-content:center;
+    animation: fadeUp 1s .4s ease both;
+  }
+  .scroll-hint{
+    position:absolute; bottom:40px; left:50%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    color:var(--muted-dim); font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.2em;
+    animation: fadeUp 1s .6s ease both;
+  }
+  .scroll-hint .line{ width:1px; height:36px; background:linear-gradient(180deg, var(--purple-soft), transparent); animation: pulseLine 2s ease-in-out infinite; }
+  @keyframes pulseLine{ 0%,100%{opacity:.3} 50%{opacity:1} }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(24px);} to{opacity:1; transform:translateY(0);} }
+
+  /* ---------- reveal on scroll ---------- */
+  .reveal{ opacity:0; transform:translateY(36px); transition:opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+
+  /* ---------- Section headers ---------- */
+  .section-head{ text-align:center; max-width:640px; margin:0 auto 64px; }
+  .section-head h2{ font-size:clamp(34px,5vw,52px); margin-top:16px; }
+  .section-head p{ color:var(--muted); margin-top:18px; font-size:16px; line-height:1.7; }
+
+  /* ---------- Glass Card ---------- */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--surface-border);
+    border-radius:18px;
+    padding:34px 28px;
+    backdrop-filter:blur(14px);
+    position:relative; overflow:hidden;
+    transition: transform .45s cubic-bezier(.2,.8,.2,1), border-color .45s ease, background .45s ease;
+  }
+  .card::before{
+    content:''; position:absolute; inset:0; border-radius:18px; padding:1px;
+    background:linear-gradient(140deg, rgba(220,38,38,0.5), transparent 40%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity:0; transition:opacity .45s ease;
+  }
+  .card:hover{ transform:translateY(-6px); border-color:rgba(220,38,38,0.35); background:rgba(255,255,255,0.05); }
+  .card:hover::before{ opacity:1; }
+  .card .icon{ font-size:26px; margin-bottom:18px; display:inline-block; }
+  .card h3{ font-family:'Syne',sans-serif; font-size:19px; font-weight:700; margin-bottom:10px; }
+  .card p{ color:var(--muted); font-size:14.5px; line-height:1.65; }
+
+  /* ---------- About grid ---------- */
+  .about-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
+  @media (max-width:900px){ .about-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:560px){ .about-grid{ grid-template-columns:1fr; } }
+
+  /* ---------- Community section ---------- */
+  .community{ background:radial-gradient(1200px 500px at 50% 0%, rgba(127,29,29,0.18), transparent); }
+  .stats-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:18px; overflow:hidden; margin-bottom:70px; }
+  @media (max-width:760px){ .stats-grid{ grid-template-columns:repeat(2,1fr); } }
+  .stat{
+    background:var(--bg-elevated); padding:40px 20px; text-align:center;
+  }
+  .stat .num{
+    font-family:'Syne',sans-serif; font-weight:800; font-size:clamp(30px,4vw,46px);
+    color:var(--ink); text-shadow:0 0 30px rgba(220,38,38,0.35);
+  }
+  .stat .label{
+    font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.14em;
+    color:var(--muted); text-transform:uppercase; margin-top:10px;
+  }
+
+  .discord-card{
+    max-width:640px; margin:0 auto;
+    background:linear-gradient(160deg, rgba(220,38,38,0.12), rgba(185,28,28,0.05));
+    border:1px solid rgba(220,38,38,0.28);
+    border-radius:22px; padding:48px 40px;
+    text-align:center; position:relative; overflow:hidden;
+  }
+  .discord-card::after{
+    content:''; position:absolute; width:280px; height:280px; border-radius:50%;
+    background:radial-gradient(circle, rgba(220,38,38,0.3), transparent 70%);
+    top:-140px; right:-100px; filter:blur(10px);
+  }
+  .discord-card .server-badge{
+    width:64px; height:64px; border-radius:16px; margin:0 auto 20px;
+    background:linear-gradient(135deg, var(--purple), var(--purple-deep));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 40px rgba(220,38,38,0.5);
+  }
+  .discord-card h3{ font-family:'Syne',sans-serif; font-size:26px; font-weight:800; }
+  .discord-card p{ color:var(--muted); margin:10px 0 28px; }
+
+  /* ---------- Events ---------- */
+  .events-note{
+    text-align:center; font-family:'JetBrains Mono',monospace; font-size:11.5px;
+    color:var(--muted-dim); letter-spacing:0.08em; margin-top:-40px; margin-bottom:56px;
+  }
+  .events-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  @media (max-width:900px){ .events-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:600px){ .events-grid{ grid-template-columns:1fr; } }
+  .event-card{
+    background:var(--surface); border:1px solid var(--surface-border); border-radius:18px;
+    overflow:hidden; transition:transform .4s ease, border-color .4s ease;
+  }
+  .event-card:hover{ transform:translateY(-5px); border-color:rgba(220,38,38,0.35); }
+  .event-top{
+    height:120px; display:flex; align-items:center; justify-content:center; font-size:38px;
+    background:linear-gradient(160deg, rgba(220,38,38,0.18), rgba(185,28,28,0.06));
+    position:relative;
+  }
+  .event-body{ padding:22px 24px 26px; }
+  .event-body h3{ font-family:'Syne',sans-serif; font-size:17px; margin-bottom:8px; }
+  .event-body p{ color:var(--muted); font-size:13.5px; line-height:1.6; }
+  .events-center{ text-align:center; margin-top:52px; }
+
+  /* ---------- Values ---------- */
+  .values-wrap{ display:flex; flex-wrap:wrap; justify-content:center; gap:14px; }
+  .value-pill{
+    display:flex; align-items:center; gap:10px;
+    padding:16px 26px; border-radius:100px;
+    border:1px solid var(--surface-border); background:var(--surface);
+    font-family:'Syne',sans-serif; font-weight:700; font-size:15px;
+    transition: all .35s ease;
+  }
+  .value-pill:hover{ border-color:var(--purple-soft); background:rgba(220,38,38,0.1); transform:translateY(-3px); }
+  .value-pill .dot{ width:6px; height:6px; border-radius:50%; background:var(--purple); box-shadow:0 0 8px var(--purple); }
+
+  /* ---------- Join CTA ---------- */
+  .join-section{
+    text-align:center; position:relative;
+    background:radial-gradient(900px 500px at 50% 50%, rgba(220,38,38,0.16), transparent 70%);
+  }
+  .join-section h2{ font-size:clamp(38px,6vw,64px); }
+  .join-section .hero-desc2{ color:var(--muted); max-width:480px; margin:20px auto 44px; font-size:17px; }
+  .btn-glow{
+    position:relative;
+  }
+  .btn-glow::after{
+    content:''; position:absolute; inset:-3px; border-radius:14px;
+    background:linear-gradient(135deg, var(--purple), var(--blue));
+    z-index:-1; filter:blur(18px); opacity:0.6;
+    animation: breathe 3s ease-in-out infinite;
+  }
+  @keyframes breathe{ 0%,100%{opacity:.45; transform:scale(1);} 50%{opacity:.85; transform:scale(1.06);} }
+
+  /* ---------- Footer ---------- */
+  footer{ border-top:1px solid var(--line); padding:64px 0 36px; }
+  .footer-grid{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:40px; margin-bottom:48px; }
+  .footer-brand .logo{ margin-bottom:14px; }
+  .footer-brand p{ color:var(--muted); font-size:14px; max-width:260px; }
+  .footer-links{ display:flex; gap:64px; flex-wrap:wrap; }
+  .footer-col h4{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted-dim); margin-bottom:16px; }
+  .footer-col a{ display:block; color:var(--muted); text-decoration:none; font-size:14.5px; margin-bottom:12px; transition:color .3s ease; }
+  .footer-col a:hover{ color:var(--purple-soft); }
+  .footer-bottom{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; border-top:1px solid var(--line); padding-top:28px; }
+  .footer-bottom p{ color:var(--muted-dim); font-size:13px; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; scroll-behavior:auto !important; }
+  }
+
+  a:focus-visible, button:focus-visible{ outline:2px solid var(--purple-soft); outline-offset:3px; }
+</style>
+</head>
+<body>
+
+<canvas id="particle-canvas"></canvas>
+<div class="glow-field"></div>
+<div class="noise"></div>
+<div id="trail-mobile"></div>
+
+<!-- Signature: The Trail — a waypoint path following the visitor's journey -->
+<div id="trail">
+  <svg width="26" height="520" viewBox="0 0 26 520">
+    <path class="trail-path-bg" d="M13 10 V510" stroke="rgba(255,255,255,0.08)" stroke-width="1.4" stroke-dasharray="2 6" fill="none"/>
+    <path id="trail-fill" class="trail-path-fill" d="M13 10 V510" stroke-dasharray="500" stroke-dashoffset="500"/>
+  </svg>
+</div>
+
+<nav id="navbar">
+  <div class="nav-inner">
+    <a href="#top" class="logo"><span class="mark"></span>LES VAGABONDS</a>
+    <ul class="nav-links">
+      <li><a href="#about">Communauté</a></li>
+      <li><a href="#community">Chiffres</a></li>
+      <li><a href="#events">Événements</a></li>
+      <li><a href="#values">Valeurs</a></li>
+    </ul>
+    <a href="https://discord.gg/xPSzxqSDM" target="_blank" rel="noopener" class="nav-cta desktop">Rejoindre</a>
+    <button class="hamburger" id="hamburger-btn" aria-label="Ouvrir le menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div id="mobile-menu">
+  <a href="#about">Communauté</a>
+  <a href="#community">Chiffres</a>
+  <a href="#events">Événements</a>
+  <a href="#values">Valeurs</a>
+  <a href="https://discord.gg/xPSzxqSDM" target="_blank" rel="noopener" class="btn btn-primary" style="margin-top:10px;">Rejoindre le Discord</a>
+</div>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="container">
+      <div class="hero-tag">Un carnet de route, pas un simple serveur</div>
+      <h1 class="display">LES VAGABONDS</h1>
+      <p class="hero-sub">Une communauté. Des rencontres. Des aventures.</p>
+      <p class="hero-desc">Bienvenue chez LES VAGABONDS, une communauté où chacun peut trouver sa place, discuter, jouer, partager et créer de nouvelles expériences.</p>
+      <div class="hero-actions">
+        <a href="https://discord.gg/xPSzxqSDM" target="_blank" rel="noopener" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.076.076 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.548-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.955 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.946 2.419-2.157 2.419z"/></svg>
+          REJOINDRE LE DISCORD
+        </a>
+        <a href="#about" class="btn btn-ghost">DÉCOUVRIR LA COMMUNAUTÉ</a>
+      </div>
+    </div>
+    <div class="scroll-hint"><span>ERRER</span><div class="line"></div></div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="eyebrow" style="justify-content:center;">Qui sommes-nous</div>
+        <h2 class="display">QUI SONT LES VAGABONDS ?</h2>
+        <p>LES VAGABONDS est une communauté Discord créée pour rassembler des personnes différentes autour d'une même envie&nbsp;: partager, discuter, jouer et passer de bons moments ensemble.</p>
+      </div>
+      <div class="about-grid">
+        <div class="card reveal">
+          <span class="icon">💬</span>
+          <h3>COMMUNAUTÉ</h3>
+          <p>Discutez, faites connaissance et partagez vos passions.</p>
+        </div>
+        <div class="card reveal">
+          <span class="icon">🎮</span>
+          <h3>GAMING</h3>
+          <p>Retrouvez d'autres joueurs et créez votre propre groupe.</p>
+        </div>
+        <div class="card reveal">
+          <span class="icon">🎉</span>
+          <h3>ÉVÉNEMENTS</h3>
+          <p>Participez à des activités, événements et moments communautaires.</p>
+        </div>
+        <div class="card reveal">
+          <span class="icon">🤝</span>
+          <h3>ENTRAIDE</h3>
+          <p>Une communauté où les membres peuvent s'entraider et partager leurs connaissances.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMMUNITY / STATS -->
+  <section id="community" class="community">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="eyebrow" style="justify-content:center;">L'errance en chiffres</div>
+        <h2 class="display">LA COMMUNAUTÉ</h2>
+      </div>
+
+      <div class="stats-grid reveal">
+        <div class="stat"><div class="num" data-stat>--</div><div class="label">Membres</div></div>
+        <div class="stat"><div class="num" data-stat>--</div><div class="label">En ligne</div></div>
+        <div class="stat"><div class="num" data-stat>--</div><div class="label">Salons</div></div>
+        <div class="stat"><div class="num" data-stat>--</div><div class="label">Événements</div></div>
+      </div>
+      <p class="events-note" style="margin-top:-40px; margin-bottom:56px;">Statistiques en direct bientôt disponibles — connexion à l'API Discord à venir</p>
+
+      <div class="discord-card reveal">
+        <div class="server-badge">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="#fff"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.076.076 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.548-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.955 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.946 2.419-2.157 2.419z"/></svg>
+        </div>
+        <h3>LES VAGABONDS</h3>
+        <p>Rejoins-nous sur Discord</p>
+        <a href="https://discord.gg/xPSzxqSDM" target="_blank" rel="noopener" class="btn btn-primary">REJOINDRE LE SERVEUR</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- EVENTS -->
+  <section id="events">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="eyebrow" style="justify-content:center;">Le carnet de bord</div>
+        <h2 class="display">NOS ÉVÉNEMENTS</h2>
+        <p>Un aperçu du type de rendez-vous que vivent LES VAGABONDS.</p>
+      </div>
+      <p class="events-note reveal" style="margin-top:-30px;">Exemples illustratifs — le calendrier réel est partagé sur le serveur</p>
+
+      <div class="events-grid">
+        <div class="event-card reveal"><div class="event-top">🎮</div><div class="event-body"><h3>Gaming Night</h3><p>Une soirée pour se retrouver en jeu, peu importe le titre.</p></div></div>
+        <div class="event-card reveal"><div class="event-top">🎤</div><div class="event-body"><h3>Soirée communautaire</h3><p>Vocal ouvert, discussions libres et bonne ambiance.</p></div></div>
+        <div class="event-card reveal"><div class="event-top">🏆</div><div class="event-body"><h3>Tournois</h3><p>Des compétitions amicales entre membres de la communauté.</p></div></div>
+        <div class="event-card reveal"><div class="event-top">🎬</div><div class="event-body"><h3>Soirée films</h3><p>On se pose ensemble pour un film ou une série en vocal.</p></div></div>
+        <div class="event-card reveal"><div class="event-top">🎁</div><div class="event-body"><h3>Giveaways</h3><p>Des cadeaux pour remercier les membres les plus actifs.</p></div></div>
+        <div class="event-card reveal"><div class="event-top">💬</div><div class="event-body"><h3>Discussions communautaires</h3><p>Des salons pour parler de tout, sans jugement.</p></div></div>
+      </div>
+      <div class="events-center reveal">
+        <a href="https://discord.gg/xPSzxqSDM" target="_blank" rel="noopener" class="btn btn-ghost">VOIR LES ÉVÉNEMENTS</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- VALUES -->
+  <section id="values">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="eyebrow" style="justify-content:center;">Ce qui nous guide</div>
+        <h2 class="display">NOS VALEURS</h2>
+      </div>
+      <div class="values-wrap reveal">
+        <div class="value-pill"><span class="dot"></span>Respect</div>
+        <div class="value-pill"><span class="dot"></span>Bonne humeur</div>
+        <div class="value-pill"><span class="dot"></span>Entraide</div>
+        <div class="value-pill"><span class="dot"></span>Tolérance</div>
+        <div class="value-pill"><span class="dot"></span>Fair-play</div>
+        <div class="value-pill"><span class="dot"></span>Communauté</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- JOIN CTA -->
+  <section class="join-section">
+    <div class="container">
+      <div class="eyebrow reveal" style="justify-content:center;">Dernière étape du chemin</div>
+      <h2 class="display reveal">PRÊT À DEVENIR<br/>UN VAGABOND ?</h2>
+      <p class="hero-desc2 reveal">Notre aventure commence avec toi.</p>
+      <div class="reveal">
+        <a href="https://discord.gg/xPSzxqSDM" target="_blank" rel="noopener" class="btn btn-primary btn-large btn-glow">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.076.076 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.548-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.955 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.946 2.419-2.157 2.419z"/></svg>
+          REJOINDRE LES VAGABONDS
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#top" class="logo"><span class="mark"></span>LES VAGABONDS</a>
+        <p>Une communauté, mille aventures.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>Naviguer</h4>
+          <a href="#top">Accueil</a>
+          <a href="#community">Communauté</a>
+          <a href="#events">Événements</a>
+          <a href="#values">Règles</a>
+        </div>
+        <div class="footer-col">
+          <h4>Rejoindre</h4>
+          <a href="https://discord.gg/xPSzxqSDM" target="_blank" rel="noopener">Discord</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 LES VAGABONDS — Tous droits réservés.</p>
+      <p>Fait pour ceux qui errent avec style.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // ---------- Nav scroll state ----------
+  const navbar = document.getElementById('navbar');
+  window.addEventListener('scroll', () => {
+    navbar.classList.toggle('scrolled', window.scrollY > 40);
+  }, { passive:true });
+
+  // ---------- Mobile menu ----------
+  const hamburger = document.getElementById('hamburger-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+  hamburger.addEventListener('click', () => {
+    mobileMenu.classList.toggle('open');
+  });
+  mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mobileMenu.classList.remove('open')));
+
+  // ---------- Reveal on scroll ----------
+  const revealEls = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if(e.isIntersecting){
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold:0.15 });
+  revealEls.forEach((el,i) => { el.style.transitionDelay = (i%4)*70 + 'ms'; io.observe(el); });
+
+  // ---------- Animated stat counters (placeholders stay as "--") ----------
+  // Intentionally left static per brief: no invented statistics.
+
+  // ---------- The Trail: waypoints + scroll progress ----------
+  const sections = ['hero','about','community','events','values'];
+  const svg = document.querySelector('#trail svg');
+  const pathFill = document.getElementById('trail-fill');
+  const totalHeight = 500; // matches path length
+  const nodeSpacing = totalHeight / (sections.length - 1);
+
+  sections.forEach((id, i) => {
+    const y = 10 + i * nodeSpacing;
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','trail-node');
+    g.setAttribute('data-target', id);
+    g.innerHTML = `<circle class="dot" cx="13" cy="${y}" r="5"></circle>`;
+    g.style.cursor = 'pointer';
+    g.addEventListener('click', () => {
+      document.getElementById(id)?.scrollIntoView({ behavior:'smooth' });
+    });
+    svg.appendChild(g);
+  });
+
+  const nodes = document.querySelectorAll('.trail-node');
+  const sectionEls = sections.map(id => document.getElementById(id));
+
+  function updateTrail(){
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = Math.min(1, Math.max(0, scrollTop / docHeight));
+
+    // update side trail fill
+    const offset = 500 - (progress * 500);
+    pathFill.style.strokeDashoffset = offset;
+
+    // mobile top progress bar
+    document.getElementById('trail-mobile').style.width = (progress*100) + '%';
+
+    // active node = current section in viewport
+    let activeIdx = 0;
+    sectionEls.forEach((el, i) => {
+      if(el && el.getBoundingClientRect().top <= window.innerHeight*0.5) activeIdx = i;
+    });
+    nodes.forEach((n,i) => n.classList.toggle('active', i===activeIdx));
+  }
+  window.addEventListener('scroll', updateTrail, { passive:true });
+  updateTrail();
+
+  // ---------- Particle field ----------
+  const canvas = document.getElementById('particle-canvas');
+  const ctx = canvas.getContext('2d');
+  let w,h,particles;
+
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight * (document.body.scrollHeight / window.innerHeight > 3 ? 1 : 1);
+    h = canvas.height = window.innerHeight;
+  }
+  function initParticles(){
+    const count = window.innerWidth < 700 ? 34 : 70;
+    particles = Array.from({length:count}, () => ({
+      x: Math.random()*w,
+      y: Math.random()*h,
+      r: Math.random()*1.6 + 0.4,
+      vy: -(Math.random()*0.28 + 0.06),
+      vx: (Math.random()-0.5)*0.12,
+      alpha: Math.random()*0.5 + 0.15,
+      hue: Math.random() > 0.5 ? '220,38,38' : '185,28,28'
+    }));
+  }
+  function tick(){
+    ctx.clearRect(0,0,w,h);
+    particles.forEach(p => {
+      p.y += p.vy; p.x += p.vx;
+      if(p.y < -10){ p.y = h+10; p.x = Math.random()*w; }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${p.hue},${p.alpha})`;
+      ctx.shadowColor = `rgba(${p.hue},0.8)`;
+      ctx.shadowBlur = 6;
+      ctx.fill();
+    });
+    requestAnimationFrame(tick);
+  }
+  resize(); initParticles(); tick();
+  window.addEventListener('resize', () => { resize(); initParticles(); }, { passive:true });
+
+  // ---------- Reduced motion respect ----------
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    canvas.style.display = 'none';
+  }
+})();
+</script>
+
+</body>
+</html>
